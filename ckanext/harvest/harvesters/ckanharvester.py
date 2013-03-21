@@ -8,13 +8,15 @@ from ckan.lib.helpers import json
 
 from ckanext.harvest.model import HarvestJob, HarvestObject, HarvestGatherError, \
                                     HarvestObjectError
-
+from ckanext.harvest.model import HarvestObjectExtra as HOExtra
 from ckanclient import CkanClient
 
 import logging
 log = logging.getLogger(__name__)
 
 from base import HarvesterBase
+
+DELETE = "delete"
 
 class CKANHarvester(HarvesterBase):
     '''
@@ -107,6 +109,39 @@ class CKANHarvester(HarvesterBase):
         return config
 
 
+    def _check_all_packages(self, url, harvest_job):
+        """
+        Prior to 2.0, https://github.com/okfn/ckan/pull/545 the api returns
+        a 403 error. Deletions will appear in the list of revisions in the 
+        gather stage but will error during the import stage. In order to
+        harvest < 2.0 ckan instances I've written this mess.
+
+        Checks all packages on remote instance against ones existing, returns
+        the difference
+        """
+        try:
+            content = self._get_content(url)
+            remote_packages = json.loads(content)
+        except urllib2.URLError, e:
+            self._save_gather_error('Unable to get all packages for URL: %s: %s' % (url, str(e)), harvest_job)
+        except ValueError, e:
+            self._save_gather_error('Unable to decode JSON for URL: %s: %s' % (url, str(e)), harvest_job)
+
+        existing_packages = model.Session.query(HarvestObject.guid) \
+                                  .filter(HarvestObject.current==True)\
+                                  .filter(HarvestObject.harvest_source_id==harvest_job.source_id)
+        deleted_ids = set(zip(*existing_packages.all())[0]) - set(remote_packages)
+
+        deleted = []
+        for package_id in deleted_ids:
+            harvest_object = HarvestObject(job=harvest_job,
+                                           extras=[HOExtra(key='status', value=DELETE)],
+                                           guid=package_id
+                                          )
+            harvest_object.save()
+            deleted.append(harvest_object.id)
+        return deleted
+
     def gather_stage(self,harvest_job):
         log.debug('In CKANHarvester gather_stage (%s)' % harvest_job.source.url)
         get_all_packages = True
@@ -127,6 +162,8 @@ class CKANHarvester(HarvesterBase):
         base_rest_url = base_url + self._get_rest_api_offset()
         base_search_url = base_url + self._get_search_api_offset()
 
+        missing_ids = self._check_all_packages(base_rest_url + '/package', harvest_job)
+
         if (previous_job and not previous_job.gather_errors and not len(previous_job.objects) == 0):
             if not self.config.get('force_all',False):
                 get_all_packages = False
@@ -141,20 +178,22 @@ class CKANHarvester(HarvesterBase):
                     revision_ids = json.loads(content)
                     if len(revision_ids):
                         for revision_id in revision_ids:
-                            url = base_rest_url + '/revision/%s' % revision_id
+                            revision = base_rest_url + '/revision/%s' % revision_id
                             try:
-                                content = self._get_content(url)
+                                content = self._get_content(revision)
                             except Exception,e:
-                                self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
+                                self._save_gather_error('Unable to get content for URL: %s: %s' % (revision, str(e)),harvest_job)
                                 continue
 
                             revision = json.loads(content)
                             for package_id in revision['packages']:
                                 if not package_id in package_ids:
                                     package_ids.append(package_id)
+
                     else:
-                        log.info('No packages have been updated on the remote CKAN instance since the last harvest job')
-                        return None
+                        if not missing_ids:
+                            log.info('No packages have been updated on the remote CKAN instance since the last harvest job')
+                            return None
 
                 except urllib2.HTTPError,e:
                     if e.getcode() == 400:
@@ -177,29 +216,39 @@ class CKANHarvester(HarvesterBase):
 
             package_ids = json.loads(content)
 
+
         try:
             object_ids = []
-            if len(package_ids):
+            if package_ids:
                 for package_id in package_ids:
                     # Create a new HarvestObject for this identifier
                     obj = HarvestObject(guid = package_id, job = harvest_job)
                     obj.save()
                     object_ids.append(obj.id)
-
-                return object_ids
-
+            elif missing_ids:
+                object_ids += missing_ids
             else:
                self._save_gather_error('No packages received for URL: %s' % url,
                        harvest_job)
                return None
+            
+            return object_ids
         except Exception, e:
             self._save_gather_error('%r'%e.message,harvest_job)
+
+
 
 
     def fetch_stage(self,harvest_object):
         log.debug('In CKANHarvester fetch_stage')
 
         self._set_config(harvest_object.job.source.config)
+
+        for extra in harvest_object.extras:
+            if extra.key == 'status' and extra.value == 'delete':
+                harvest_object.content = 'deleted'
+                harvest_object.package_id = harvest_object.guid
+                return True
 
         # Get source URL
         url = harvest_object.source.url.rstrip('/')
@@ -230,6 +279,11 @@ class CKANHarvester(HarvesterBase):
             return False
 
         self._set_config(harvest_object.job.source.config)
+
+        for extra in harvest_object.extras:
+            if extra.key == 'status' and extra.value == 'delete':
+                self._delete_package(harvest_object)
+                return True
 
         try:
             package_dict = json.loads(harvest_object.content)
@@ -288,7 +342,6 @@ class CKANHarvester(HarvesterBase):
                 for user_name in (u'visitor',u'logged_in'):
                     user = model.User.get(user_name)
                     pkg_role = model.PackageRole(package=package, user=user, role=model.Role.READER)
-
 
             return True
         except ValidationError,e:
