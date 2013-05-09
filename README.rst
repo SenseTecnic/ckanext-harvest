@@ -17,7 +17,7 @@ You will need to install the RabbitMQ server::
 
 Clone the repository and set up the extension::
 
-    git clone https://github.com/okfn/ckanext-harvest
+    git clone https://github.com/SenseTecnic/ckanext-harvest.git
     cd ckanext-harvest
     pip install -r pip-requirements.txt
     python setup.py develop
