@@ -3,7 +3,7 @@ from lxml import etree
 from lxml.etree import XMLSyntaxError
 from pylons.i18n import _
 
-from ckan.authz import Authorizer
+import ckan.new_authz
 from ckan import model
 from ckan.model.group import Group
 
@@ -34,7 +34,7 @@ class ViewController(BaseController):
         groups = None
 
         if c.publisher_auth:
-            if Authorizer().is_sysadmin(c.user):
+            if ckan.new_authz.is_sysadmin(c.user):
                 groups = Group.all(group_type='publisher')
             elif c.userobj:
                 groups = c.userobj.get_groups('publisher')
