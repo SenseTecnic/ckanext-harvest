@@ -13,7 +13,7 @@ stages.
 
 You will need to install the RabbitMQ server::
 
-    sudo apt-get install rabbitmq-server
+    sudo apt-get install rabbitmq-server python-lxml
 
 Clone the repository and set up the extension::
 
