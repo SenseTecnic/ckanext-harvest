@@ -40,14 +40,17 @@ class DataLondonGovUkHarvester(HarvesterBase):
         }
 
     def skip_filter(self, row):
-        if self.config and 'whitelist_filter' in self.config:
-            for searchTerm in self.config['whitelist_filter']:
-                if searchTerm in row.get('TITLE') or searchTerm in row.get('CATEGORIES'):
-                    log.debug("Hit in whitelist filter, will get this source: " + row.get('TITLE'))
-                    return False
+        try:
+            if self.config and 'whitelist_filter' in self.config:
+                for searchTerm in self.config['whitelist_filter']:
+                    if searchTerm in row.get('TITLE').decode('utf-8') or searchTerm in row.get('CATEGORIES').decode('utf-8'):
+                        log.debug("Hit in whitelist filter, will get this source: " + row.get('TITLE'))
+                        return False
+                return True
+            else:
+                return False
+        except Exception:
             return True
-        else:
-            return False
 
     def gather_stage(self, harvest_job):
         log.debug('In DataLondonGovUk gather_stage')
