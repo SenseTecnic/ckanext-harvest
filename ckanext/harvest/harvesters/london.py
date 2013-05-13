@@ -19,6 +19,19 @@ class DataLondonGovUkHarvester(HarvesterBase):
     CATALOGUE_URL = "http://data.london.gov.uk"
     CATALOGUE_CSV_URL = "http://data.london.gov.uk/datafiles/datastore-catalogue.csv"
 
+    config = None
+    
+    def _set_config(self,config_str):
+        if config_str:
+            self.config = json.loads(config_str)
+
+            if 'api_version' in self.config:
+                self.api_version = self.config['api_version']
+
+            log.debug('Using config: %r', self.config)
+        else:
+            self.config = {}
+            
     def info(self):
         return {
             'name': 'data_london_gov_uk',
@@ -26,13 +39,32 @@ class DataLondonGovUkHarvester(HarvesterBase):
             'description': 'CSV Import from GLA Datastore'
         }
 
+    def skip_filter(self, row):
+        if self.config and 'whitelist_filter' in self.config:
+            for searchTerm in self.config['whitelist_filter']:
+                if searchTerm in row.get('TITLE') or searchTerm in row.get('CATEGORIES'):
+                    log.debug("Hit in whitelist filter, will get this source: " + row.get('TITLE'))
+                    return False
+            return True
+        else:
+            return False
+
     def gather_stage(self, harvest_job):
         log.debug('In DataLondonGovUk gather_stage')
+
+        self._set_config(harvest_job.source.config)
 
         csvfh = urllib2.urlopen(self.CATALOGUE_CSV_URL)
         csv = DictReader(csvfh)
         ids = []
         for row in csv:
+            if self.skip_filter(row):
+                continue
+
+                
+                
+                        
+                
             id = sha1('%s/%s' % (self.CATALOGUE_URL,row.get('DRUPAL_NODE'))).hexdigest()
             row = dict([(k, v.decode('latin-1')) for k, v in row.items()])
             obj = HarvestObject(guid=id, job=harvest_job,
