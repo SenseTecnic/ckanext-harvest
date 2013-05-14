@@ -139,6 +139,7 @@ class DataLondonGovUkHarvester(HarvesterBase):
             pkg_format('JSON', 'application/json')
             pkg_format('SHP', 'application/octet-stream+esri')
             pkg_format('KML', 'application/vnd.google-earth.kml+xml')
+            pkg_format('PDF', 'application/pdf')
         except Exception, e:
             log.exception(e)
             self._save_object_error('%r' % e, harvest_object, 'Import')

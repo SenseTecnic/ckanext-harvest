@@ -4,3 +4,4 @@
 
 carrot==0.10.1
 ckanclient>=0.7
+beautifulsoup4>=4.2.0

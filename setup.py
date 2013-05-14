@@ -35,6 +35,7 @@ setup(
 	harvest=ckanext.harvest.plugin:Harvest
 	ckan_harvester=ckanext.harvest.harvesters:CKANHarvester
 	london_harvester=ckanext.harvest.harvesters:DataLondonGovUkHarvester
+	wotkit_harvester=ckanext.harvest.harvesters:WotkitHarvester
 	[paste.paster_command]
 	harvester = ckanext.harvest.commands.harvester:Harvester
 	""",
