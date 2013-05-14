@@ -101,7 +101,7 @@ class ViewController(BaseController):
 
             h.flash_success(_('New harvest source added successfully.'
                     'A new harvest job for the source has also been created.'))
-            redirect('/harvest/%s' % source['id'])
+            redirect(h.url_for('harvest') + '/%s' % source['id'])
         except NotAuthorized,e:
             abort(401,self.not_auth_message)
         except DataError,e:
@@ -153,7 +153,7 @@ class ViewController(BaseController):
             source = get_action('harvest_source_update')(context,data_dict)
 
             h.flash_success(_('Harvest source edited successfully.'))
-            redirect('/harvest/%s' %id)
+            redirect(h.url_for('harvest') + '/%s' %id)
         except NotAuthorized,e:
             abort(401,self.not_auth_message)
         except DataError,e:
