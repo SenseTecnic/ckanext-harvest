@@ -27,16 +27,6 @@ class Harvest(SingletonPlugin):
 
         auth_profile = config.get('ckan.harvest.auth.profile',None)
 
-        # Check config file for wotkit related configs
-        if not config.get("wotkit.url"):
-            raise Exception("No wotkit.url in configuration .ini file")
-        if not config.get("wotkit.harvest_id"):
-            raise Exception("No wotkit.harvest_id in configuration .ini file")
-        if not config.get("wotkit.harvest_key"):
-            raise Exception("No wotkit.harvest_key in configuration .ini file")
-        import ckanext.harvest.harvesters.sensors.sensetecnic as sensetecnic
-        sensetecnic.init(config.get("wotkit.url"), config.get("wotkit.harvest_id"), config.get("wotkit.harvest_key"))
-        
         if auth_profile:
             # Check if auth profile exists
             module_root = 'ckanext.harvest.logic.auth'
