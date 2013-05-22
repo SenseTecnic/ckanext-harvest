@@ -24,6 +24,26 @@ class CKANHarvester(HarvesterBase):
 
     api_version = '2'
 
+    def package_filter(self):
+        try:
+            url = "http://data.gov.uk/api/3/action/package_search?q="
+            params = ""
+            if self.config and 'whitelist_filter' in self.config:
+                params = "%20AND%20".join(self.config["whitelist_filter"])  
+                      
+            url = url + str(params)
+            result = self._get_content(url)
+            
+            package_ids = []
+            decoded_result = json.loads(result)
+            for package in decoded_result["result"]["results"]:
+                package_ids.append(package["name"])
+                
+            return package_ids
+        except Exception as e:
+            print "Something went wrong in searching for packages: " + str(e)
+        return []
+        
     def _get_rest_api_offset(self):
         return '/api/%s/rest' % self.api_version
 
@@ -112,60 +132,10 @@ class CKANHarvester(HarvesterBase):
 
     def gather_stage(self,harvest_job):
         log.debug('In CKANHarvester gather_stage (%s)' % harvest_job.source.url)
-        get_all_packages = True
+        get_all_packages = False
         package_ids = []
 
         self._set_config(harvest_job.source.config)
-
-        # Check if this source has been harvested before
-        previous_job = Session.query(HarvestJob) \
-                        .filter(HarvestJob.source==harvest_job.source) \
-                        .filter(HarvestJob.gather_finished!=None) \
-                        .filter(HarvestJob.id!=harvest_job.id) \
-                        .order_by(HarvestJob.gather_finished.desc()) \
-                        .limit(1).first()
-
-        # Get source URL
-        base_url = harvest_job.source.url.rstrip('/')
-        base_rest_url = base_url + self._get_rest_api_offset()
-        base_search_url = base_url + self._get_search_api_offset()
-
-        if (previous_job and not previous_job.gather_errors and not len(previous_job.objects) == 0):
-            if not self.config.get('force_all',False):
-                get_all_packages = False
-
-                # Request only the packages modified since last harvest job
-                last_time = harvest_job.gather_started.isoformat()
-                url = base_search_url + '/revision?since_time=%s' % last_time
-
-                try:
-                    content = self._get_content(url)
-
-                    revision_ids = json.loads(content)
-                    if len(revision_ids):
-                        for revision_id in revision_ids:
-                            url = base_rest_url + '/revision/%s' % revision_id
-                            try:
-                                content = self._get_content(url)
-                            except Exception,e:
-                                self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
-                                continue
-
-                            revision = json.loads(content)
-                            for package_id in revision.packages:
-                                if not package_id in package_ids:
-                                    package_ids.append(package_id)
-                    else:
-                        log.info('No packages have been updated on the remote CKAN instance since the last harvest job')
-                        return None
-
-                except urllib2.HTTPError,e:
-                    if e.getcode() == 400:
-                        log.info('CKAN instance %s does not suport revision filtering' % base_url)
-                        get_all_packages = True
-                    else:
-                        self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
-                        return None
 
 
 
@@ -179,7 +149,9 @@ class CKANHarvester(HarvesterBase):
                 return None
 
             package_ids = json.loads(content)
-
+        else:
+            package_ids = self.package_filter()
+            
         try:
             object_ids = []
             if len(package_ids):
@@ -208,6 +180,7 @@ class CKANHarvester(HarvesterBase):
         url = harvest_object.source.url.rstrip('/')
         url = url + self._get_rest_api_offset() + '/package/' + harvest_object.guid
 
+
         # Get contents
         try:
             content = self._get_content(url)
@@ -216,6 +189,7 @@ class CKANHarvester(HarvesterBase):
                                         (url, e),harvest_object)
             return None
 
+        
         # Save the fetched contents in the HarvestObject
         harvest_object.content = content
         harvest_object.save()
