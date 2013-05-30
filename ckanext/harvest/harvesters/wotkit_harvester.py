@@ -141,7 +141,6 @@ class WotkitHarvester(HarvesterBase):
             if sensor_module['module'] == moduleName:
                 packageName = sensor_module['package_name']
                 
-        
         try:
             # Hacky solution that calls as action that imports modules in the wotkit extension
             context = self._getContext()
@@ -151,7 +150,8 @@ class WotkitHarvester(HarvesterBase):
             package_dict = get_action("wotkit_harvest_module")(context, data_dict)
             package_dict['id'] = harvest_object.guid,
             package_dict['name'] = self._gen_new_name(packageName)
-            package_dict['notes'] = "Harvested with wotkit_harvester"
+            package_dict['notes'] = "Harvested with wotkit_harvester. This dataset is queried every 15 minutes and populated in the Wotkit."
+            package_dict['groups'] = {'id': 'wotkit-datasets'}
             
             return self._create_or_update_package(package_dict, harvest_object)  
         except ValidationError,e:
