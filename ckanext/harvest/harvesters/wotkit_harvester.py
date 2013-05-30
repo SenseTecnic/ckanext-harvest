@@ -151,6 +151,7 @@ class WotkitHarvester(HarvesterBase):
             package_dict['id'] = harvest_object.guid,
             package_dict['name'] = self._gen_new_name(packageName)
             package_dict['notes'] = "Harvested with wotkit_harvester. This dataset is queried every 15 minutes and populated in the Wotkit."
+
             package_dict['extras'] = {'key': 'last-update', 'value': str(datetime.datetime.now())}
             package_dict['groups'] = {'id': 'wotkit-datasets'}
             
