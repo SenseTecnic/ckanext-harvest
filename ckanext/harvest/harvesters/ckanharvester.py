@@ -26,20 +26,29 @@ class CKANHarvester(HarvesterBase):
 
     def package_filter(self):
         try:
-            url = "http://data.gov.uk/api/3/action/package_search?q="
-            params = ""
-            if self.config and 'whitelist_filter' in self.config:
-                params = "%20AND%20".join(self.config["whitelist_filter"])  
-                      
-            url = url + str(params)
-            result = self._get_content(url)
-            
-            package_ids = []
-            decoded_result = json.loads(result)
-            for package in decoded_result["result"]["results"]:
-                package_ids.append(package["name"])
+            if self.config["package_ids"]:
+                url = "http://data.gov.uk/api/action/package_show?id="
+                package_ids = []
+                for id in self.config["package_ids"]:
+                    result = self._get_content(url + id)
+                    decoded_result = json.loads(result)
+                    package_ids.append(decoded_result["result"]["name"])
+                return package_ids
+            else:
+                url = "http://data.gov.uk/api/3/action/package_search?q="
+                params = ""
+                if self.config and 'whitelist_filter' in self.config:
+                    params = "%20AND%20".join(self.config["whitelist_filter"])  
+                          
+                url = url + str(params)
+                result = self._get_content(url)
                 
-            return package_ids
+                package_ids = []
+                decoded_result = json.loads(result)
+                for package in decoded_result["result"]["results"]:
+                    package_ids.append(package["name"])
+                    
+                return package_ids
         except Exception as e:
             print "Something went wrong in searching for packages: " + str(e)
         return []
@@ -137,7 +146,7 @@ class CKANHarvester(HarvesterBase):
 
         self._set_config(harvest_job.source.config)
 
-
+        get_all_packages = False
 
         if get_all_packages:
             # Request all remote packages
