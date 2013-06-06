@@ -109,7 +109,7 @@ class WotkitHarvester(HarvesterBase):
         ids = []
         for sensor in sensors:
             try:
-                id = sha1(sensor["module"]).hexdigest()
+                id = sha1(sensor["module"] + sensor["package_name"]).hexdigest()
                 obj = HarvestObject(guid=id, job=harvest_job, content=sensor["module"])
                 obj.save()
                 ids.append(obj.id)
