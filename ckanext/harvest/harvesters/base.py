@@ -52,6 +52,7 @@ class HarvesterBase(SingletonPlugin):
         if name not in taken:
             return name
         else:
+            return name
             counter = 1
             while counter < 101:
                 if name+str(counter) not in taken:

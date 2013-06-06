@@ -149,7 +149,7 @@ class WotkitHarvester(HarvesterBase):
             # Call action defined in wotkit extension
             package_dict = get_action("wotkit_harvest_module")(context, data_dict)
             package_dict['id'] = harvest_object.guid,
-            package_dict['name'] = packageName #self._gen_new_name(packageName)
+            package_dict['name'] = self._gen_new_name(packageName)
             package_dict['notes'] = "Harvested with wotkit_harvester. This dataset is queried every 15 minutes and populated in the Wotkit."
 
             package_dict['extras'] = {'last-update': str(datetime.datetime.now())}
