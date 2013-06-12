@@ -140,7 +140,7 @@ class HarvesterBase(SingletonPlugin):
 
             # Check if package exists
             data_dict = {}
-            data_dict['id'] = package_dict['id']
+            data_dict['id'] = package_dict['name']
             try:
                 existing_package_dict = get_action('package_show')(context, data_dict)
                 # Check modified date
@@ -148,7 +148,8 @@ class HarvesterBase(SingletonPlugin):
                    package_dict['metadata_modified'] > existing_package_dict.get('metadata_modified'):
                     log.info('Package with GUID %s exists and needs to be updated' % harvest_object.guid)
                     # Update package
-                    context.update({'id':package_dict['id']})
+                    context.update({'id':package_dict['name']})
+                    del package_dict['id']
                     new_package = get_action('package_update_rest')(context, package_dict)
 
                 else:
@@ -157,7 +158,8 @@ class HarvesterBase(SingletonPlugin):
 
             except NotFound:
                 # Package needs to be created
-
+                import json
+                log.info(json.dumps(package_dict))
                 # Check if name has not already been used
                 package_dict['name'] = self._check_name(package_dict['name'])
 
