@@ -155,7 +155,9 @@ class WotkitHarvester(HarvesterBase):
             package_dict['extras'] = {'last-update': str(datetime.datetime.now())}
             package_dict['groups'] = {'id': 'wotkit-datasets'}
             
-            return self._create_or_update_package(package_dict, harvest_object)  
+            # For now, ignore package creation
+            return True
+            #return self._create_or_update_package(package_dict, harvest_object)  
         except ValidationError,e:
             self._save_object_error('Invalid package with GUID %s: %r' % (harvest_object.guid, e.error_dict),
                     harvest_object, 'Import')
